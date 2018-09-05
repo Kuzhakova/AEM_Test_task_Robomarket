@@ -1,0 +1,23 @@
+subject:: Success purchase!
+body::
+<!doctype html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Success purchase!</title>
+</head>
+<body>
+<h1>Hi!</h1>
+<h2>Thank you for your purchase!</h2>
+<p>Here is some information about your product:</p>
+<p>Product name: %product_name%</p>
+<p>Product description: %product_description%</p>
+<p>Product price: %product_price%</p>
+<p>Follow the link below to confirm your purchase and see beautiful modal<br/><br/>
+    <a style="color: blue;" target="_blank" href="%confirmation_link% ">
+        %confirmation_link%
+    </a>
+</p>
+</body>
+</html>
