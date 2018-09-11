@@ -16,7 +16,7 @@ public class Item {
     private double price;
 
     @SerializedName("Title")
-    private Title title;
+    private ItemTitle title;
 
     public String getOfferId() {
         return offerId;
@@ -50,25 +50,12 @@ public class Item {
         this.price = price;
     }
 
-    public Title getTitle() {
+    public ItemTitle getItemTitle() {
         return title;
     }
 
-    public void setTitle(Title title) {
+    public void setItemTitle(ItemTitle title) {
         this.title = title;
     }
-
-    class Title {
-
-        @SerializedName("Value")
-        private String value;
-
-        public String getValue() {
-            return value;
-        }
-
-        public void setValue(String value) {
-            this.value = value;
-        }
-    }
+    
 }

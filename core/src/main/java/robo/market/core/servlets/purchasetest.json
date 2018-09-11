@@ -1,18 +1,18 @@
 {
   "Robomarket": {
-    "ReservationRequest": {
+    "PurchaseRequest": {
       "TotalCost": 48.30,
-      "MinPaymentDue": "2018-09-07T19:45:35.0000773+03:00",
-      "OrderId": "1230073",
+      "InvoiceId": "aem-shop-1230073-4292",
+      "OrderId": "1230072",
       "Customer": {
         "Name": "Иванов Иван Иванович",
-        "Email": "ivanov@ivanov.ru",
+        "Email": "aemtop@mailinator.com",
         "Phone": "+7-495-123-45-67"
       },
       "CustomerComment": "Комментарий покупателя",
       "Items": [
         {
-          "OfferId": "4902517",
+          "OfferId": "shapka-sinyaya-123",
           "TotalCost": 33.30,
           "Quantity": 3,
           "Price": 11.10,
@@ -25,11 +25,11 @@
             "Price": 15.00,
             "Region": "Калужская обл.",
             "City": "Калуга",
-            "Address": "sssss"
+            "Address": "Иванову И.И.\r\nул.Ленина 432"
           }
         }
       ]
     }
   }
 }
-de1eb03f988a8ea5453415324693277a
+310e6f00a5581af3ab6fb19f938dd610
