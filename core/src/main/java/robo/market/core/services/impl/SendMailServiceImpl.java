@@ -9,6 +9,7 @@ import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import robo.market.core.robomarketutils.constants.RobomarketJcrConstants;
 import robo.market.core.services.SendMailService;
 
 import javax.mail.*;
@@ -28,6 +29,7 @@ public class SendMailServiceImpl implements SendMailService {
     //TODO: Config
     private final String USER_NAME = "robomarketproduct@gmail.com";
     private final String PASSWORD = "aemtop000";
+    private static final String DEFAULT_TEMPLATE_LETTER_PATH = "/apps/robomarket-product/templates/emails/sample-template-email.txt";
 
     private Session session;
 
@@ -50,9 +52,25 @@ public class SendMailServiceImpl implements SendMailService {
                 });
     }
 
+    private String getPathToTemplate() {
+        String path = DEFAULT_TEMPLATE_LETTER_PATH;
+        Resource responsivegrid;
+        try {
+            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketJcrConstants.RESPONSIVEGRID_PATH);
+        } catch (LoginException e) {
+            return path;
+        }
+        if (Objects.nonNull(responsivegrid)) {
+            ValueMap responsivegridValueMap = responsivegrid.getValueMap();
+            path = (String) responsivegridValueMap.get("letterTemplatePath");
+        }
+
+        return path;
+    }
+
     @Override
-    public void sendSuccessEmailToCustomer(String customerEmail, String pathToTemplate, Map<String, String> templateValuesMap) throws LoginException, MessagingException {
-        Message message = new MimeMessage(session);
+    public void sendSuccessEmailToCustomer(String customerEmail, Map<String, String> templateValuesMap) throws LoginException, MessagingException {
+        MimeMessage message = new MimeMessage(session);
         message.setFrom(new InternetAddress(USER_NAME));
         message.setRecipients(Message.RecipientType.TO,
                 InternetAddress.parse(customerEmail));
@@ -61,6 +79,7 @@ public class SendMailServiceImpl implements SendMailService {
         String specialSymbolBody = "body::";
         String templateString;
 
+        String pathToTemplate = getPathToTemplate();
         Resource resource = resolverFactory.getResourceResolver(null).getResource(pathToTemplate + "/" + JcrConstants.JCR_CONTENT);
         if (Objects.nonNull(resource)) {
             ValueMap valueMap = resource.getValueMap();
@@ -85,9 +104,9 @@ public class SendMailServiceImpl implements SendMailService {
                 }
                 matcher.appendTail(bodyWithValues);
 
-                message.setSubject(subject);
-                message.setText(bodyWithValues.toString());
-
+                message.setHeader("Content-Type", "text/plain; charset=UTF-8");
+                message.setSubject(subject, "UTF-8");
+                message.setText(bodyWithValues.toString(), "UTF-8");
                 Transport.send(message);
             }
         }

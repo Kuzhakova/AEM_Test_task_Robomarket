@@ -7,7 +7,7 @@ import java.util.Map;
 
 public interface SendMailService {
 
-    void sendSuccessEmailToCustomer(String customerEmail, String pathToTemplate, Map<String, String> values) throws LoginException, MessagingException;
+    void sendSuccessEmailToCustomer(String customerEmail, Map<String, String> values) throws LoginException, MessagingException;
 
     void sendFailEmailToCustomer(String customerEmail) throws LoginException, MessagingException;
 }

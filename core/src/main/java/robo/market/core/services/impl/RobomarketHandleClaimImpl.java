@@ -15,11 +15,13 @@ import org.osgi.service.component.annotations.Reference;
 import robo.market.core.gsondatabind.purchase.PurchaseRequest;
 import robo.market.core.gsondatabind.purchase.PurchaseResponce;
 import robo.market.core.gsondatabind.requstparameters.Customer;
+import robo.market.core.gsondatabind.requstparameters.ErrorJson;
 import robo.market.core.gsondatabind.requstparameters.Item;
 import robo.market.core.gsondatabind.reservation.ReservationFailure;
 import robo.market.core.gsondatabind.reservation.ReservationRequest;
 import robo.market.core.gsondatabind.reservation.ReservationSuccess;
 import robo.market.core.models.RobomarketProductModel;
+import robo.market.core.robomarketutils.constants.RobomarketJcrConstants;
 import robo.market.core.robomarketutils.constants.RobomarketJsonKeys;
 import robo.market.core.services.RobomarketHandleClaimService;
 import robo.market.core.services.SendMailService;
@@ -33,17 +35,7 @@ import java.util.*;
         service = RobomarketHandleClaimService.class, immediate = true)
 public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
 
-    private static final String ROBOMARKET_PRODUCT_RESOURCE_TYPE = "robomarket-product/components/content/product";
-    private static final String ERROR_CODE_FAIL = "Fail";
-    private static final String ERROR_CODE_OK = "Ok";
-    private static final String ERROR_CODE_NOT_ENOUGH_GOODS = "NotEnoughGoodsInStock";
-    private static final List<String> invoiceIdList = new LinkedList();
-    private static final Map<String, Date> invoiceIdPaymentDueMap = new HashMap<>(); // ублюдское название
-
-    private static final Gson gson = new GsonBuilder()
-            .setPrettyPrinting()
-            .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSXXX")
-            .create();
+    private static final Map<String, Date> invoiceIdPaymentDueMap = new HashMap<>(); // ублюдское название и сомнительная бд
 
     @Reference
     private ResourceResolverFactory resolverFactory;
@@ -51,13 +43,17 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     @Reference
     private SendMailService sendMailService;
 
+    private static final Gson gson = new GsonBuilder()
+            .setPrettyPrinting()
+            .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSXXX")
+            .create();
+
     @Override
     public String processReservationRequest(JSONObject requestData) throws IOException, JSONException {
         ReservationRequest reservationRequest = gson.fromJson(requestData.toString(), ReservationRequest.class);
         if (Objects.isNull(reservationRequest)) {
             throw new JSONException("Error parsing JSON request string");
         }
-
         JsonObject jsonResponce = new JsonObject();
         JsonObject jsonStatus = new JsonObject();
         JsonElement jsonResponseFields;
@@ -67,7 +63,6 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
                 ReservationSuccess reservationSuccess = new ReservationSuccess(orderId);
                 jsonResponseFields = gson.toJsonTree(reservationSuccess);
                 jsonStatus.add(RobomarketJsonKeys.RESERVATION_SUCCESS, jsonResponseFields);
-                // добавить в "базу"
                 invoiceIdPaymentDueMap.put(reservationSuccess.getInvoiceId(), reservationSuccess.getPaymentDue());
             } else {
                 //TODO: custom exception
@@ -75,7 +70,7 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
             }
 
         } catch (Exception e) {
-            ReservationFailure reservationFailure = new ReservationFailure(orderId, ERROR_CODE_FAIL);
+            ReservationFailure reservationFailure = new ReservationFailure(orderId, ErrorJson.ERROR_CODE_FAIL);
             jsonResponseFields = gson.toJsonTree(reservationFailure);
             jsonStatus.add(RobomarketJsonKeys.RESERVATION_FAILURE, jsonResponseFields);
         }
@@ -84,25 +79,35 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
         return gson.toJson(jsonResponce);
     }
 
-    private boolean productExistsOnPage(List<Item> items) throws LoginException {
-        //TODO: изменить способ извлечения ресурса
-        Resource responsivegrid = resolverFactory.getResourceResolver(null).getResource("/content/robomarket-product/en/jcr:content/root/responsivegrid");
+    private boolean productExistsOnPage(List<Item> items) {
+        for (Item item : items) {
+            if (Objects.nonNull(getProductFromPage(item))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private RobomarketProductModel getProductFromPage(Item item) {
+        Resource responsivegrid = null;
+        try {
+            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketJcrConstants.RESPONSIVEGRID_PATH);
+        } catch (LoginException e) {
+            return null;
+        }
         if (Objects.nonNull(responsivegrid)) {
             Iterator<Resource> resourceIterator = responsivegrid.listChildren();
-            for (Item item : items) {
-                while (resourceIterator.hasNext()) {
-                    Resource resource = resourceIterator.next();
-                    if (resource.isResourceType(ROBOMARKET_PRODUCT_RESOURCE_TYPE)) {
-                        RobomarketProductModel product = resource.adaptTo(RobomarketProductModel.class);
-                        if (item.getOfferId().equals(product.getOfferId())) {
-                            return true;
-                        }
+            while (resourceIterator.hasNext()) {
+                Resource resource = resourceIterator.next();
+                if (resource.isResourceType(RobomarketJcrConstants.ROBOMARKET_PRODUCT_RESOURCE_TYPE)) {
+                    RobomarketProductModel product = resource.adaptTo(RobomarketProductModel.class);
+                    if (item.getOfferId().equals(product.getOfferId())) {
+                        return product;
                     }
                 }
             }
         }
-
-        return false;
+        return null;
     }
 
     @Override
@@ -117,26 +122,24 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
             throw new JSONException("Error parsing JSON request string");
         }
         //TODO PATH
-        String path = "/apps/robomarket-product/templates/emails/sample-template-email.txt";
         JsonObject jsonResponce = new JsonObject();
         JsonObject jsonStatus = new JsonObject();
         JsonElement jsonResponseFields;
         Date paymentDue = invoiceIdPaymentDueMap.get(purchaseRequest.getInvoiceId());
         Date now = new Date();
-        if (Objects.nonNull(paymentDue) && now.before(paymentDue)){
+        if (Objects.nonNull(paymentDue) && now.before(paymentDue)) {
             try {
-                PurchaseResponce purchaseResponce = new PurchaseResponce(purchaseRequest.getOrderId(), ERROR_CODE_OK);
+                PurchaseResponce purchaseResponce = new PurchaseResponce(purchaseRequest.getOrderId(), ErrorJson.ERROR_CODE_OK);
                 jsonResponseFields = gson.toJsonTree(purchaseResponce);
                 jsonStatus.add(RobomarketJsonKeys.PURCHASE_RESPONSE, jsonResponseFields);
 
                 Customer customer = purchaseRequest.getCustomer();
                 Map<String, String> templateValuesMap = createTemplateValuesMap(purchaseRequest.getItems());
-                sendMailService.sendSuccessEmailToCustomer(customer.getEmail(), path, templateValuesMap);
+                sendMailService.sendSuccessEmailToCustomer(customer.getEmail(), templateValuesMap);
 
                 jsonResponce.add(RobomarketJsonKeys.ROBOMARKET, jsonStatus);
                 return gson.toJson(jsonResponce);
-            }
-            catch (LoginException | MessagingException e) {
+            } catch (LoginException | MessagingException e) {
                 //TODO
             }
         }
@@ -144,17 +147,18 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
         return "";
     }
 
-    private Map<String, String> createTemplateValuesMap(List<Item> itemList){
+    private Map<String, String> createTemplateValuesMap(List<Item> itemList) {
         Map<String, String> templateValuesMap = new HashMap<>();
-        for (Item item: itemList){
+        for (Item item : itemList) {
             templateValuesMap.put("product_name", item.getItemTitle().getValue());
-            templateValuesMap.put("product_description", "Cool product");           //TODO: УЗНАТЬ
+            RobomarketProductModel product = getProductFromPage(item);
+            templateValuesMap.put("product_description", Objects.nonNull(product) ? product.getDescription() : "");
             templateValuesMap.put("product_price", String.valueOf(item.getPrice()));
-
-            String generatedConfirmationLink = UUID.randomUUID().toString();
-            EmailConfirmationServlet.addConfirmationLink(generatedConfirmationLink);
-
-            templateValuesMap.put("confirmation_link", generatedConfirmationLink);
+            String generatedConfirmationParam = UUID.randomUUID().toString();
+            EmailConfirmationServlet.addConfirmationLink(generatedConfirmationParam);
+            String confirmationLink = "http://localhost:4502/" + "robomarket-product/emailconfirmation" +
+                    "?u=" + generatedConfirmationParam;
+            templateValuesMap.put("confirmation_link", confirmationLink);
         }
         return templateValuesMap;
     }

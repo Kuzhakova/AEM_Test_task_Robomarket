@@ -26,10 +26,6 @@ public class RobomarketProductModel {
     @Required
     private String offerId;
 
-    @Inject
-    @Required
-    private String letterTemplatePath;
-
     public String getTitle() {
         return title;
     }
@@ -44,9 +40,5 @@ public class RobomarketProductModel {
 
     public String getOfferId() {
         return offerId;
-    }
-
-    public String getLetterTemplatePath() {
-        return letterTemplatePath;
     }
 }

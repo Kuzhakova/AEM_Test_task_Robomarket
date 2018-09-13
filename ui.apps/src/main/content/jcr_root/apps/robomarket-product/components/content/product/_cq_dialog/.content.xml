@@ -56,12 +56,6 @@
                         fieldLabel="Product Offer ID"
                         name="./offerId"
                         required="{Boolean}true"/>
-                    <letterTemplatePath
-                        jcr:primaryType="nt:unstructured"
-                        sling:resourceType="granite/ui/components/coral/foundation/form/pathfield"
-                        fieldLabel="Letter Template Path"
-                        name="./letterTemplatePath"
-                        required="{Boolean}true"/>
                 </items>
             </column>
         </items>
