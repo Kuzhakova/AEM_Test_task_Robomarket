@@ -27,32 +27,11 @@ public abstract class RobomarketRequest {
         return totalCost;
     }
 
-    public void setTotalCost(double totalCost) {
-        this.totalCost = totalCost;
-    }
-
     public int getOrderId() {
         return orderId;
     }
-
-    public void setOrderId(int orderId) {
-        this.orderId = orderId;
-    }
-
-    public String getCustomerComment() {
-        return customerComment;
-    }
-
-    public void setCustomerComment(String customerComment) {
-        this.customerComment = customerComment;
-    }
-
     public Customer getCustomer() {
         return customer;
-    }
-
-    public void setCustomer(Customer customer) {
-        this.customer = customer;
     }
 
     public List<Item> getItems() {
@@ -61,6 +40,10 @@ public abstract class RobomarketRequest {
 
     public void setItems(List<Item> items) {
         this.items = items;
+    }
+
+    public String getCustomerComment() {
+        return customerComment;
     }
 }
 

@@ -14,7 +14,4 @@ public class ReservationRequest extends RobomarketRequest {
         return minPaymentDue;
     }
 
-    public void setMinPaymentDue(Date minPaymentDue) {
-        this.minPaymentDue = minPaymentDue;
-    }
 }

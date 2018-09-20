@@ -38,12 +38,12 @@
                         fieldLabel="Price"
                         name="./price"
                         required="{Boolean}true"/>
-                    <!--<priceTypeHint
-                            jcr:primaryType="nt:unstructured"
-                            sling:resourceType="granite/ui/components/foundation/form/hidden"
-                            ignoreData="true"
-                            value="Big Decimal"
-                            name="./price@TypeHint"/>-->
+                    <priceTypeHint
+                        jcr:primaryType="nt:unstructured"
+                        sling:resourceType="granite/ui/components/foundation/form/hidden"
+                        ignoreData="true"
+                        value="Double"
+                        name="./price@TypeHint"/>
                     <description
                         jcr:primaryType="nt:unstructured"
                         sling:resourceType="granite/ui/components/foundation/form/textfield"

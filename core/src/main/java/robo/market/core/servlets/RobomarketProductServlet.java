@@ -27,7 +27,7 @@ import java.util.Objects;
                 Constants.SERVICE_DESCRIPTION + "=Robo.Market Product Servlet",
                 "sling.servlet.methods=" + HttpConstants.METHOD_POST,
                 "sling.servlet.resourceTypes=" + "robomarket-product/components/structure/page",
-                "sling.servlet.extensions=" + "html"
+                "sling.servlet.extensions=" + "json"
         })
 public class RobomarketProductServlet extends SlingAllMethodsServlet {
 
@@ -68,16 +68,16 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
 
                 switch (requestTypeName) {
                     case RobomarketJsonKeys.RESERVATION_REQUEST:
-                        responseData = robomarketHandleClaimService.processReservationRequest(requestBody);
+                        responseData = robomarketHandleClaimService.handleReservationRequest(requestBody);
                         break;
                     case RobomarketJsonKeys.YA_RESERVATION_REQUEST:
-                        responseData = robomarketHandleClaimService.processYaReservationRequest(requestBody);
+                        responseData = robomarketHandleClaimService.handleYaReservationRequest(requestBody);
                         break;
                     case RobomarketJsonKeys.CANCELLATION_REQUEST:
-                        responseData = robomarketHandleClaimService.processCancellationRequest(requestBody);
+                        responseData = robomarketHandleClaimService.handleCancellationRequest(requestBody);
                         break;
                     case RobomarketJsonKeys.PURCHASE_REQUEST:
-                        responseData = robomarketHandleClaimService.processPurchaseRequest(requestBody);
+                        responseData = robomarketHandleClaimService.handlePurchaseRequest(requestBody);
                         break;
                     default:
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -98,5 +98,4 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
     }
-
 }

@@ -9,11 +9,11 @@ public interface RobomarketHandleClaimService {
 
     long RESERVATION_TIME = 1800000;
 
-    String processReservationRequest(JSONObject requestData) throws IOException, JSONException;
+    String handleReservationRequest(JSONObject requestData) throws IOException, JSONException;
 
-    String processYaReservationRequest(JSONObject requestData) throws IOException, JSONException;
+    String handleYaReservationRequest(JSONObject requestData) throws IOException, JSONException;
 
-    String processPurchaseRequest(JSONObject requestData) throws IOException, JSONException;
+    String handlePurchaseRequest(JSONObject requestData) throws IOException, JSONException;
 
-    String processCancellationRequest(JSONObject requestData) throws IOException, JSONException;
+    String handleCancellationRequest(JSONObject requestData) throws IOException, JSONException;
 }

@@ -25,6 +25,12 @@ public class ReservationSuccess {
         this.paymentDue = new Date(RobomarketHandleClaimService.RESERVATION_TIME + System.currentTimeMillis());
     }
 
+    public ReservationSuccess(int orderId, String invoiceId) {
+        this.invoiceId = invoiceId;
+        this.orderId = orderId;
+        this.paymentDue = new Date(RobomarketHandleClaimService.RESERVATION_TIME + System.currentTimeMillis());
+    }
+
     public String getInvoiceId() {
         return invoiceId;
     }
