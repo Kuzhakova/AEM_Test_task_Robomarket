@@ -1,5 +1,6 @@
 package robo.market.core.servlets;
 
+import com.google.gson.JsonParseException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
@@ -10,6 +11,7 @@ import org.json.JSONObject;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import robo.market.core.exceptions.PurchaseRequestException;
 import robo.market.core.robomarketutils.constants.RobomarketJsonKeys;
 import robo.market.core.services.RobomarketHandleClaimService;
 
@@ -37,8 +39,16 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
     @Reference
     private RobomarketHandleClaimService robomarketHandleClaimService;
 
+    private static String servletCallPath;
+
+    public static String getServletCallPath() {
+        return servletCallPath;
+    }
+
     @Override
     protected void doPost(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
+        servletCallPath = request.getResource().getPath();
+
         String contentType = request.getHeader("Content-Type");
         StringBuilder requestData = new StringBuilder();
         BufferedReader reader = request.getReader();
@@ -51,47 +61,53 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
 
         String requestSignature = request.getHeader(HEADER_ROBOSIGNATURE);
         String calculatedRequestSignature = DigestUtils.md5Hex(requestString + SECRET_PHRASE);
-
         if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
-
-        String responseData = "";
-        if ("application/json".equalsIgnoreCase(contentType) || "application/json; charset=utf-8".equalsIgnoreCase(contentType)) {
+        String responseString = "";
+        //TODO think if this check really needed and if yes, how to perform it
+        if (Objects.nonNull(contentType) && contentType.toLowerCase().contains("application/json")) {
             try {
                 JSONObject jsonObject = new JSONObject(requestString);
-                JSONObject robomarket = jsonObject.getJSONObject(RobomarketJsonKeys.ROBOMARKET);
-                Iterator<String> requestTypesIterator = robomarket.keys();
+                JSONObject jsonRobomarket = jsonObject.getJSONObject(RobomarketJsonKeys.ROBOMARKET);
+                Iterator<String> requestTypesIterator = jsonRobomarket.keys();
                 String requestTypeName = requestTypesIterator.next();
-                JSONObject requestBody = robomarket.getJSONObject(requestTypeName);
+                JSONObject jsonRequestBody = jsonRobomarket.getJSONObject(requestTypeName);
 
                 switch (requestTypeName) {
                     case RobomarketJsonKeys.RESERVATION_REQUEST:
-                        responseData = robomarketHandleClaimService.handleReservationRequest(requestBody);
+                        responseString = robomarketHandleClaimService.handleReservationRequest(jsonRequestBody);
                         break;
                     case RobomarketJsonKeys.YA_RESERVATION_REQUEST:
-                        responseData = robomarketHandleClaimService.handleYaReservationRequest(requestBody);
+                        responseString = robomarketHandleClaimService.handleYaReservationRequest(jsonRequestBody);
                         break;
                     case RobomarketJsonKeys.CANCELLATION_REQUEST:
-                        responseData = robomarketHandleClaimService.handleCancellationRequest(requestBody);
+                        responseString = robomarketHandleClaimService.handleCancellationRequest(jsonRequestBody);
                         break;
                     case RobomarketJsonKeys.PURCHASE_REQUEST:
-                        responseData = robomarketHandleClaimService.handlePurchaseRequest(requestBody);
+                        responseString = robomarketHandleClaimService.handlePurchaseRequest(jsonRequestBody);
                         break;
                     default:
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                        break;
+                        return;
                 }
 
-                String calculatedResponceSignature = DigestUtils.md5Hex(responseData + SECRET_PHRASE);
+                String calculatedResponseSignature = DigestUtils.md5Hex(responseString + SECRET_PHRASE);
                 PrintWriter printWriter = response.getWriter();
-                printWriter.print(responseData);
-
-                response.addHeader(HEADER_ROBOSIGNATURE, calculatedResponceSignature);
+                printWriter.print(responseString);
+                response.addHeader(HEADER_ROBOSIGNATURE, calculatedResponseSignature);
                 response.setStatus(HttpServletResponse.SC_OK);
+            } catch (JSONException | JsonParseException e) {
 
-            } catch (JSONException e) {
+                // TODO change logger, see slf4j
+                log("Error occurred during JSON processing.", e);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            } catch (PurchaseRequestException e) {
+                log("Error occurred during processing " + PurchaseRequestException.REQUEST_TYPE, e);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            } catch (Exception e) {
+                log("Something went wrong...", e);
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
         } else {

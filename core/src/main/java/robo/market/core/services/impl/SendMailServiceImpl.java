@@ -9,8 +9,8 @@ import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import robo.market.core.robomarketutils.constants.RobomarketJcrConstants;
 import robo.market.core.services.SendMailService;
+import robo.market.core.servlets.RobomarketProductServlet;
 
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
@@ -22,6 +22,8 @@ import java.util.Properties;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.day.cq.wcm.foundation.List.log;
 
 @Component(property = {Constants.SERVICE_DESCRIPTION + "=Service for sending emails to customers."},
         service = SendMailService.class, immediate = true)
@@ -56,7 +58,7 @@ public class SendMailServiceImpl implements SendMailService {
         String path = DEFAULT_TEMPLATE_LETTER_PATH;
         Resource responsivegrid;
         try {
-            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketJcrConstants.RESPONSIVEGRID_PATH);
+            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.getServletCallPath() + "/root/responsivegrid");
         } catch (LoginException e) {
             return path;
         }
@@ -69,48 +71,52 @@ public class SendMailServiceImpl implements SendMailService {
     }
 
     @Override
-    public void sendSuccessEmailToCustomer(String customerEmail, Map<String, String> templateValuesMap) throws LoginException, MessagingException {
-        MimeMessage message = new MimeMessage(session);
-        message.setFrom(new InternetAddress(USER_NAME));
-        message.setRecipients(Message.RecipientType.TO,
-                InternetAddress.parse(customerEmail));
+    public void sendSuccessEmailToCustomer(String customerEmail, Map<String, String> templateValuesMap) {
+        try {
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(USER_NAME));
+            message.setRecipients(Message.RecipientType.TO,
+                    InternetAddress.parse(customerEmail));
 
-        String specialSymbolSubject = "subject::";
-        String specialSymbolBody = "body::";
-        String templateString;
+            String specialSymbolSubject = "subject::";
+            String specialSymbolBody = "body::";
+            String templateString;
 
-        String pathToTemplate = getPathToTemplate();
-        Resource resource = resolverFactory.getResourceResolver(null).getResource(pathToTemplate + "/" + JcrConstants.JCR_CONTENT);
-        if (Objects.nonNull(resource)) {
-            ValueMap valueMap = resource.getValueMap();
-            if (valueMap.get(JcrConstants.JCR_PRIMARYTYPE).equals(JcrConstants.NT_RESOURCE)) {
-                InputStream inputStream = (InputStream) valueMap.get(JcrConstants.JCR_DATA);
+            String pathToTemplate = getPathToTemplate();
+            Resource resource = resolverFactory.getResourceResolver(null).getResource(pathToTemplate + "/" + JcrConstants.JCR_CONTENT);
+            if (Objects.nonNull(resource)) {
+                ValueMap valueMap = resource.getValueMap();
+                if (valueMap.get(JcrConstants.JCR_PRIMARYTYPE).equals(JcrConstants.NT_RESOURCE)) {
+                    InputStream inputStream = (InputStream) valueMap.get(JcrConstants.JCR_DATA);
 
-                templateString = readStringFromTemplate(inputStream);
+                    templateString = readStringFromTemplate(inputStream);
 
-                String subject = templateString.substring(templateString.indexOf(specialSymbolSubject) + specialSymbolSubject.length(), templateString.indexOf(specialSymbolBody));
-                String bodyWithoutValues = templateString.substring(templateString.indexOf(specialSymbolBody) + specialSymbolBody.length());
-                Pattern pattern = Pattern.compile("%(\\w+)%");
-                Matcher matcher = pattern.matcher(bodyWithoutValues);
-                StringBuffer bodyWithValues = new StringBuffer();
-                while (matcher.find()) {
-                    String group = matcher.group(1);
-                    String value = templateValuesMap.get(group);
-                    if (Objects.nonNull(value)) {
-                        matcher.appendReplacement(bodyWithValues, templateValuesMap.get(group));
-                    } else {
-                        matcher.appendReplacement(bodyWithValues, "");
+                    String subject = templateString.substring(templateString.indexOf(specialSymbolSubject) + specialSymbolSubject.length(), templateString.indexOf(specialSymbolBody));
+                    String bodyWithoutValues = templateString.substring(templateString.indexOf(specialSymbolBody) + specialSymbolBody.length());
+                    // TODO use templateValuesMap keys and values in bodyWithoutValues.replaceAll()
+                    Pattern pattern = Pattern.compile("%(\\w+)%");
+                    Matcher matcher = pattern.matcher(bodyWithoutValues);
+                    StringBuffer bodyWithValues = new StringBuffer();
+                    while (matcher.find()) {
+                        String group = matcher.group(1);
+                        String value = templateValuesMap.get(group);
+                        if (Objects.nonNull(value)) {
+                            matcher.appendReplacement(bodyWithValues, templateValuesMap.get(group));
+                        } else {
+                            matcher.appendReplacement(bodyWithValues, "");
+                        }
                     }
+                    matcher.appendTail(bodyWithValues);
+
+                    message.setHeader("Content-Type", "text/plain; charset=UTF-8");
+                    message.setSubject(subject, "UTF-8");
+                    message.setText(bodyWithValues.toString(), "UTF-8");
+                    Transport.send(message);
                 }
-                matcher.appendTail(bodyWithValues);
-
-                message.setHeader("Content-Type", "text/plain; charset=UTF-8");
-                message.setSubject(subject, "UTF-8");
-                message.setText(bodyWithValues.toString(), "UTF-8");
-                Transport.send(message);
             }
+        } catch (LoginException | MessagingException e) {
+            log.error("Error sending message.", e);
         }
-
 
     }
 

@@ -1,6 +1,6 @@
 package robo.market.core.models.beans;
 
-import robo.market.core.gsondatabind.requstparameters.Customer;
+import robo.market.core.jsondatabind.requstparameters.Customer;
 import robo.market.core.robomarketutils.constants.RobomarketOrderStatus;
 
 import java.util.Date;

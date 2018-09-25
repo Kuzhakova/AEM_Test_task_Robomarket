@@ -10,4 +10,7 @@ public class ConfirmationException extends Exception {
         super(message);
     }
 
+    public ConfirmationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

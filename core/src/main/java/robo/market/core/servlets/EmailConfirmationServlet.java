@@ -19,7 +19,7 @@ import java.io.IOException;
         property = {
                 Constants.SERVICE_DESCRIPTION + "=Robo.Market Email Confirmation Servlet",
                 "sling.servlet.methods=" + HttpConstants.METHOD_GET,
-                "sling.servlet.paths=" + "/bin/robomarket-product/emailconfirmation",
+                "sling.servlet.paths=" + EmailConfirmationServlet.SERVLET_PATH,
         })
 public class EmailConfirmationServlet extends SlingAllMethodsServlet {
 
@@ -31,9 +31,9 @@ public class EmailConfirmationServlet extends SlingAllMethodsServlet {
     @Override
     protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
         String parameter = request.getParameter("u");
-        String url = "/content/robomarket-product/en.html";
+        String url = "/content/robomarket-product/ru.html";
         try {
-            if (robomarketOrdersService.updateRobomarketOrder(parameter)) {
+            if (robomarketOrdersService.confirmRobomarketOrder(parameter)) {
                 url += "?u=success";
             }
         } catch (ConfirmationException e) {

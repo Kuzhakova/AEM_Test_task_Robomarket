@@ -32,7 +32,7 @@ if (purchaseModal === undefined) {
 }
 
 $.get(
-    "/content/robomarket-product/en.html",
+    "/content/robomarket-product/ru.html",
     onAjaxSuccess
 );
 

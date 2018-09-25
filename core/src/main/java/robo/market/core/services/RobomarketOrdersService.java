@@ -1,11 +1,11 @@
 package robo.market.core.services;
 
 import robo.market.core.exceptions.ConfirmationException;
-import robo.market.core.gsondatabind.cancellation.CancellationRequest;
-import robo.market.core.gsondatabind.purchase.PurchaseRequest;
-import robo.market.core.gsondatabind.reservation.ReservationRequest;
-import robo.market.core.gsondatabind.reservation.ReservationSuccess;
-import robo.market.core.gsondatabind.yareservation.YaReservationRequest;
+import robo.market.core.jsondatabind.cancellation.CancellationRequest;
+import robo.market.core.jsondatabind.purchase.PurchaseRequest;
+import robo.market.core.jsondatabind.reservation.ReservationRequest;
+import robo.market.core.jsondatabind.reservation.ReservationSuccess;
+import robo.market.core.jsondatabind.yareservation.YaReservationRequest;
 import robo.market.core.models.beans.RobomarketOrder;
 import robo.market.core.robomarketutils.constants.RobomarketOrderStatus;
 
@@ -17,9 +17,9 @@ public interface RobomarketOrdersService {
 
     RobomarketOrder updateRobomarketOrder(PurchaseRequest purchaseRequest);
 
-    boolean updateRobomarketOrder(String confirmationLinkParam) throws ConfirmationException;
+    boolean confirmRobomarketOrder(String confirmationLinkParam) throws ConfirmationException;
 
-    void updateRobomarketOrder(YaReservationRequest yaReservationRequest, ReservationSuccess reservationSuccess);
+    void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, ReservationSuccess reservationSuccess);
 
     Date getMinPaymentDueByInvoiceId(String invoiceId);
 
@@ -30,7 +30,5 @@ public interface RobomarketOrdersService {
     RobomarketOrder cancelRobomarketOrder(CancellationRequest cancellationRequest);
 
     void cancelOverdueRobomarketOrder(String invoiceId);
-
-   /* RobomarketOrder getRobomarketOrder(RobomarketPurchaseRequestJsonModel yaReservationRequest);*/
 
 }

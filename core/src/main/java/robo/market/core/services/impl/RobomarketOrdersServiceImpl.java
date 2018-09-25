@@ -3,11 +3,11 @@ package robo.market.core.services.impl;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
 import robo.market.core.exceptions.ConfirmationException;
-import robo.market.core.gsondatabind.cancellation.CancellationRequest;
-import robo.market.core.gsondatabind.purchase.PurchaseRequest;
-import robo.market.core.gsondatabind.reservation.ReservationRequest;
-import robo.market.core.gsondatabind.reservation.ReservationSuccess;
-import robo.market.core.gsondatabind.yareservation.YaReservationRequest;
+import robo.market.core.jsondatabind.cancellation.CancellationRequest;
+import robo.market.core.jsondatabind.purchase.PurchaseRequest;
+import robo.market.core.jsondatabind.reservation.ReservationRequest;
+import robo.market.core.jsondatabind.reservation.ReservationSuccess;
+import robo.market.core.jsondatabind.yareservation.YaReservationRequest;
 import robo.market.core.models.beans.RobomarketOrder;
 import robo.market.core.robomarketutils.constants.RobomarketOrderStatus;
 import robo.market.core.services.RobomarketOrdersService;
@@ -37,7 +37,13 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     }
 
     private RobomarketOrder getRobomarketOrderByInvoiceId(String invoiceId) {
+        // TODO see java 8 lamdas
         RobomarketOrder robomarketOrder = null;
+      /*  robomarketOrderList.forEach(order -> {
+            if (order.getInvoiceId().equals(invoiceId)) {
+                robomarketOrder = order;
+            }
+        });*/
         for (RobomarketOrder order : robomarketOrderList) {
             if (order.getInvoiceId().equals(invoiceId)) {
                 robomarketOrder = order;
@@ -84,7 +90,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     }
 
     @Override
-    public boolean updateRobomarketOrder(String confirmationLinkParam) throws ConfirmationException {
+    public boolean confirmRobomarketOrder(String confirmationLinkParam) throws ConfirmationException {
         try {
             for (RobomarketOrder order : robomarketOrderList) {
                 if (order.getConfirmationLinkParameter().equals(confirmationLinkParam) && (order.getStatus() != RobomarketOrderStatus.CONFIRMED)) {
@@ -99,7 +105,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     }
 
     @Override
-    public void updateRobomarketOrder(YaReservationRequest yaReservationRequest, ReservationSuccess reservationSuccess) {
+    public void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, ReservationSuccess reservationSuccess) {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(yaReservationRequest.getInvoiceId());
         robomarketOrder.setStatus(RobomarketOrderStatus.RESERVED);
         robomarketOrder.setMinPaymentDue(reservationSuccess.getPaymentDue());
