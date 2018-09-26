@@ -2,7 +2,10 @@ package robo.market.core.services.impl;
 
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
+import robo.market.core.exceptions.CancellationRequestException;
 import robo.market.core.exceptions.ConfirmationException;
+import robo.market.core.exceptions.PurchaseRequestException;
+import robo.market.core.exceptions.ReservationRequestException;
 import robo.market.core.jsondatabind.cancellation.CancellationRequest;
 import robo.market.core.jsondatabind.purchase.PurchaseRequest;
 import robo.market.core.jsondatabind.reservation.ReservationRequest;
@@ -21,7 +24,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     private static final List<RobomarketOrder> robomarketOrderList = new LinkedList<>();
 
     @Override
-    public void addRobomarketOrder(ReservationRequest reservationRequest, ReservationSuccess reservationSuccess) {
+    public void reserveRobomarketOrder(ReservationRequest reservationRequest, ReservationSuccess reservationSuccess) {
         RobomarketOrder robomarketOrder = new RobomarketOrder();
         robomarketOrder.setOrderId(reservationRequest.getOrderId());
         robomarketOrder.setTotalCost(reservationRequest.getTotalCost());
@@ -39,7 +42,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     private RobomarketOrder getRobomarketOrderByInvoiceId(String invoiceId) {
         // TODO see java 8 lamdas
         RobomarketOrder robomarketOrder = null;
-      /*  robomarketOrderList.forEach(order -> {
+       /* robomarketOrderList.forEach(order -> {
             if (order.getInvoiceId().equals(invoiceId)) {
                 robomarketOrder = order;
             }
@@ -53,8 +56,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         return robomarketOrder;
     }
 
-    @Override
-    public Date getMinPaymentDueByInvoiceId(String invoiceId) {
+    private Date getMinPaymentDueByInvoiceId(String invoiceId) {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getMinPaymentDue();
     }
@@ -65,27 +67,25 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getConfirmationLinkParameter();
     }
 
-    @Override
-    public RobomarketOrderStatus checkRobomarketOrderStatus(String invoiceId) {
+    private RobomarketOrderStatus checkRobomarketOrderStatus(String invoiceId) {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getStatus();
     }
 
     @Override
-    public RobomarketOrder cancelRobomarketOrder(CancellationRequest cancellationRequest) {
-        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(cancellationRequest.getInvoiceId());
-        if (Objects.nonNull(robomarketOrder) && (robomarketOrder.getStatus() == RobomarketOrderStatus.RESERVED)) {
-            robomarketOrder.setStatus(RobomarketOrderStatus.CANCELLED);
-            return robomarketOrder;
+    public void cancelRobomarketOrder(CancellationRequest cancellationRequest) throws CancellationRequestException {
+        if (!cancelRobomarketOrder(cancellationRequest.getInvoiceId())) {
+            throw new CancellationRequestException("There is no such order in the reserved state");
         }
-        return null;
     }
 
-    @Override
-    public void cancelOverdueRobomarketOrder(String invoiceId) {
+    private boolean cancelRobomarketOrder(String invoiceId) {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         if (Objects.nonNull(robomarketOrder) && (robomarketOrder.getStatus() == RobomarketOrderStatus.RESERVED)) {
             robomarketOrder.setStatus(RobomarketOrderStatus.CANCELLED);
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -105,16 +105,32 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     }
 
     @Override
-    public void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, ReservationSuccess reservationSuccess) {
-        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(yaReservationRequest.getInvoiceId());
+    public void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, Date newMinPaymentDue) throws ReservationRequestException {
+        String invoiceId = yaReservationRequest.getInvoiceId();
+        Date minPaymentDue = getMinPaymentDueByInvoiceId(invoiceId);
+        Date nowDate = new Date();
+        if (Objects.nonNull(minPaymentDue) && nowDate.after(minPaymentDue)) {
+            throw new ReservationRequestException("There is no such order in the overdue state");
+        }
+        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         robomarketOrder.setStatus(RobomarketOrderStatus.RESERVED);
-        robomarketOrder.setMinPaymentDue(reservationSuccess.getPaymentDue());
+        robomarketOrder.setMinPaymentDue(newMinPaymentDue);
     }
 
     @Override
-    public RobomarketOrder updateRobomarketOrder(PurchaseRequest purchaseRequest) {
-        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(purchaseRequest.getInvoiceId());
+    public void registerPurchaseRobomarketOrder(PurchaseRequest purchaseRequest) throws PurchaseRequestException {
+        String invoiceId = purchaseRequest.getInvoiceId();
+        Date minPaymentDue = getMinPaymentDueByInvoiceId(invoiceId);
+        if (Objects.isNull(minPaymentDue) || (checkRobomarketOrderStatus(invoiceId) != RobomarketOrderStatus.RESERVED)) {
+            throw new PurchaseRequestException("This order is not reserved.");
+        }
+        Date nowDate = new Date();
+        if (nowDate.after(minPaymentDue)) {
+            cancelRobomarketOrder(invoiceId);
+            throw new PurchaseRequestException("Product payment overdue.");
+        }
+
+        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         robomarketOrder.setStatus(RobomarketOrderStatus.PURCHASED);
-        return null;
     }
 }

@@ -1,7 +1,6 @@
 package robo.market.core.jsondatabind.reservation;
 
 import com.google.gson.annotations.SerializedName;
-import robo.market.core.services.RobomarketHandleClaimService;
 
 import java.util.Date;
 import java.util.Random;
@@ -19,16 +18,16 @@ public class ReservationSuccess {
     @SerializedName("OrderId")
     private int orderId;
 
-    public ReservationSuccess(int orderId) {
+    public ReservationSuccess(int orderId, Date paymentDue) {
         this.invoiceId = "aem-shop-" + orderId + "-" + random.nextInt(10000);
         this.orderId = orderId;
-        this.paymentDue = new Date(RobomarketHandleClaimService.RESERVATION_TIME + System.currentTimeMillis());
+        this.paymentDue = paymentDue;
     }
 
-    public ReservationSuccess(int orderId, String invoiceId) {
+    public ReservationSuccess(int orderId, String invoiceId, Date paymentDue) {
         this.invoiceId = invoiceId;
         this.orderId = orderId;
-        this.paymentDue = new Date(RobomarketHandleClaimService.RESERVATION_TIME + System.currentTimeMillis());
+        this.paymentDue = paymentDue;
     }
 
     public String getInvoiceId() {

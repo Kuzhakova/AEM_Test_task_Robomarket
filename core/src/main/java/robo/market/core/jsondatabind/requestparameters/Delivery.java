@@ -1,4 +1,4 @@
-package robo.market.core.jsondatabind.requstparameters;
+package robo.market.core.jsondatabind.requestparameters;
 
 import com.google.gson.annotations.SerializedName;
 

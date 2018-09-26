@@ -11,6 +11,9 @@ import org.json.JSONObject;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import robo.market.core.exceptions.CancellationRequestException;
 import robo.market.core.exceptions.PurchaseRequestException;
 import robo.market.core.robomarketutils.constants.RobomarketJsonKeys;
 import robo.market.core.services.RobomarketHandleClaimService;
@@ -35,6 +38,7 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
 
     private static final String SECRET_PHRASE = "PokaChtoNetu";
     private static final String HEADER_ROBOSIGNATURE = "RoboSignature";
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Reference
     private RobomarketHandleClaimService robomarketHandleClaimService;
@@ -45,28 +49,33 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
         return servletCallPath;
     }
 
+    private String readRequestBody(SlingHttpServletRequest request) {
+        StringBuilder requestData = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(request.getReader())) {
+            String line = reader.readLine();
+            while (Objects.nonNull(line)) {
+                requestData.append(line);
+                line = reader.readLine();
+            }
+            return requestData.toString();
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
     @Override
     protected void doPost(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
         servletCallPath = request.getResource().getPath();
 
         String contentType = request.getHeader("Content-Type");
-        StringBuilder requestData = new StringBuilder();
-        BufferedReader reader = request.getReader();
-        String line = reader.readLine();
-        while (Objects.nonNull(line)) {
-            requestData.append(line);
-            line = reader.readLine();
-        }
-        String requestString = requestData.toString();
-
+        String requestString = readRequestBody(request);
         String requestSignature = request.getHeader(HEADER_ROBOSIGNATURE);
         String calculatedRequestSignature = DigestUtils.md5Hex(requestString + SECRET_PHRASE);
-        if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
+        /*if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
-        }
+        }*/
         String responseString = "";
-        //TODO think if this check really needed and if yes, how to perform it
         if (Objects.nonNull(contentType) && contentType.toLowerCase().contains("application/json")) {
             try {
                 JSONObject jsonObject = new JSONObject(requestString);
@@ -99,15 +108,10 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
                 response.addHeader(HEADER_ROBOSIGNATURE, calculatedResponseSignature);
                 response.setStatus(HttpServletResponse.SC_OK);
             } catch (JSONException | JsonParseException e) {
-
-                // TODO change logger, see slf4j
-                log("Error occurred during JSON processing.", e);
+                logger.error("Error occurred during JSON processing.", e);
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            } catch (PurchaseRequestException e) {
-                log("Error occurred during processing " + PurchaseRequestException.REQUEST_TYPE, e);
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            } catch (Exception e) {
-                log("Something went wrong...", e);
+            } catch (PurchaseRequestException | CancellationRequestException e) {
+                logger.error("Error occurred during processing request: " + e.getMessage(), e);
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
         } else {

@@ -2,8 +2,8 @@ package robo.market.core.jsondatabind;
 
 import com.google.gson.annotations.SerializedName;
 import robo.market.core.jsondatabind.annotations.JsonRequired;
-import robo.market.core.jsondatabind.requstparameters.Customer;
-import robo.market.core.jsondatabind.requstparameters.Item;
+import robo.market.core.jsondatabind.requestparameters.Customer;
+import robo.market.core.jsondatabind.requestparameters.Item;
 
 import java.util.List;
 

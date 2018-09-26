@@ -1,7 +1,7 @@
 package robo.market.core.jsondatabind.purchase;
 
 import com.google.gson.annotations.SerializedName;
-import robo.market.core.jsondatabind.requstparameters.ErrorJson;
+import robo.market.core.jsondatabind.responseparameters.ErrorJson;
 
 public class PurchaseResponce {
 

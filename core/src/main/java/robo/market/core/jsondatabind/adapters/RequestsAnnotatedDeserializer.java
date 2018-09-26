@@ -9,6 +9,11 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Gets Gson to fail if Json would not contain required fields in models.
+ *
+ * @param <T> Model to parse to.
+ */
 public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
 
     public T deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
@@ -18,17 +23,17 @@ public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
         Field[] fields = pojo.getClass().getDeclaredFields();
         checkRequaredAnnotation(pojo, fields);
         if (pojo instanceof RobomarketRequest) {
-            Field[] fieldsParent = pojo.getClass().getSuperclass().getDeclaredFields();
-            checkRequaredAnnotation(pojo, fieldsParent);
+            Field[] fieldsSuperClass = pojo.getClass().getSuperclass().getDeclaredFields();
+            checkRequaredAnnotation(pojo, fieldsSuperClass);
         }
         //checkSuperClasses(pojo);
         return pojo;
     }
 
     private void checkSuperClasses(Object pojo) throws JsonParseException {
-        Class<?> superclass = pojo.getClass();
-        while ((superclass = superclass.getSuperclass()) != null) {
-            checkRequaredAnnotation(pojo, superclass.getDeclaredFields());
+        Class<?> superClass = pojo.getClass();
+        while ((superClass = superClass.getSuperclass()) != null) {
+            checkRequaredAnnotation(pojo, superClass.getDeclaredFields());
         }
     }
 

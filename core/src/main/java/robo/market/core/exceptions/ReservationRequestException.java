@@ -2,8 +2,6 @@ package robo.market.core.exceptions;
 
 public class ReservationRequestException extends Exception {
 
-    public static final String REQUEST_TYPE = "Reservation Request";
-
     public ReservationRequestException() {
         super();
     }

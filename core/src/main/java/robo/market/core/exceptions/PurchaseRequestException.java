@@ -2,8 +2,6 @@ package robo.market.core.exceptions;
 
 public class PurchaseRequestException extends Exception {
 
-    public static final String REQUEST_TYPE = "Purchase Request";
-
     public PurchaseRequestException() {
         super();
     }

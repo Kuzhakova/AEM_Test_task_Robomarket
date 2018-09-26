@@ -9,6 +9,8 @@ import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import robo.market.core.services.SendMailService;
 import robo.market.core.servlets.RobomarketProductServlet;
 
@@ -20,18 +22,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static com.day.cq.wcm.foundation.List.log;
 
 @Component(property = {Constants.SERVICE_DESCRIPTION + "=Service for sending emails to customers."},
         service = SendMailService.class, immediate = true)
 public class SendMailServiceImpl implements SendMailService {
-    //TODO: Config
+
     private final String USER_NAME = "robomarketproduct@gmail.com";
     private final String PASSWORD = "aemtop000";
     private static final String DEFAULT_TEMPLATE_LETTER_PATH = "/apps/robomarket-product/templates/emails/sample-template-email.txt";
+
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private Session session;
 
@@ -88,36 +88,23 @@ public class SendMailServiceImpl implements SendMailService {
                 ValueMap valueMap = resource.getValueMap();
                 if (valueMap.get(JcrConstants.JCR_PRIMARYTYPE).equals(JcrConstants.NT_RESOURCE)) {
                     InputStream inputStream = (InputStream) valueMap.get(JcrConstants.JCR_DATA);
-
                     templateString = readStringFromTemplate(inputStream);
 
                     String subject = templateString.substring(templateString.indexOf(specialSymbolSubject) + specialSymbolSubject.length(), templateString.indexOf(specialSymbolBody));
-                    String bodyWithoutValues = templateString.substring(templateString.indexOf(specialSymbolBody) + specialSymbolBody.length());
-                    // TODO use templateValuesMap keys and values in bodyWithoutValues.replaceAll()
-                    Pattern pattern = Pattern.compile("%(\\w+)%");
-                    Matcher matcher = pattern.matcher(bodyWithoutValues);
-                    StringBuffer bodyWithValues = new StringBuffer();
-                    while (matcher.find()) {
-                        String group = matcher.group(1);
-                        String value = templateValuesMap.get(group);
-                        if (Objects.nonNull(value)) {
-                            matcher.appendReplacement(bodyWithValues, templateValuesMap.get(group));
-                        } else {
-                            matcher.appendReplacement(bodyWithValues, "");
-                        }
+                    String body = templateString.substring(templateString.indexOf(specialSymbolBody) + specialSymbolBody.length());
+                    for (Map.Entry<String, String> entry : templateValuesMap.entrySet()) {
+                        body = body.replaceAll(entry.getKey(), entry.getValue());
                     }
-                    matcher.appendTail(bodyWithValues);
 
                     message.setHeader("Content-Type", "text/plain; charset=UTF-8");
                     message.setSubject(subject, "UTF-8");
-                    message.setText(bodyWithValues.toString(), "UTF-8");
+                    message.setText(body, "UTF-8");
                     Transport.send(message);
                 }
             }
         } catch (LoginException | MessagingException e) {
-            log.error("Error sending message.", e);
+            logger.error("Error with sending message");
         }
-
     }
 
     @Override
