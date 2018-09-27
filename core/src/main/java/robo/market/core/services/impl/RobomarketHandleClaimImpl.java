@@ -67,19 +67,14 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
         JsonObject jsonStatus = new JsonObject();
         JsonElement jsonResponseFields;
         int orderId = reservationRequest.getOrderId();
-        try {
-            if (productExistsOnPage(reservationRequest.getItems())) {
-                Date paymentDue = new Date(RESERVATION_TIME + System.currentTimeMillis());
-                ReservationSuccess reservationSuccess = new ReservationSuccess(orderId, paymentDue);
-                jsonResponseFields = gson.toJsonTree(reservationSuccess);
-                jsonStatus.add(RobomarketJsonKeys.RESERVATION_SUCCESS, jsonResponseFields);
+        if (productExistsOnPage(reservationRequest.getItems())) {
+            Date paymentDue = new Date(RESERVATION_TIME + reservationRequest.getMinPaymentDue().getTime());
+            ReservationSuccess reservationSuccess = new ReservationSuccess(orderId, paymentDue);
+            jsonResponseFields = gson.toJsonTree(reservationSuccess);
+            jsonStatus.add(RobomarketJsonKeys.RESERVATION_SUCCESS, jsonResponseFields);
 
-                robomarketOrdersService.reserveRobomarketOrder(reservationRequest, reservationSuccess);
-            } else {
-                throw new ReservationRequestException("Product doesn't exist");
-            }
-
-        } catch (ReservationRequestException e) {
+            robomarketOrdersService.reserveRobomarketOrder(reservationRequest, reservationSuccess);
+        } else {
             ReservationFailure reservationFailure = new ReservationFailure(orderId, ErrorJson.ERROR_CODE_FAIL);
             jsonResponseFields = gson.toJsonTree(reservationFailure);
             jsonStatus.add(RobomarketJsonKeys.RESERVATION_FAILURE, jsonResponseFields);

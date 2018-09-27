@@ -7,7 +7,7 @@ import robo.market.core.exceptions.PurchaseRequestException;
 
 public interface RobomarketHandleClaimService {
 
-    long RESERVATION_TIME = 1800000;
+    long RESERVATION_TIME = 60000;
 
     String handleReservationRequest(JSONObject requestData) throws JsonParseException;
 

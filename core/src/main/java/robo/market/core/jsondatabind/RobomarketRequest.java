@@ -13,7 +13,6 @@ public abstract class RobomarketRequest {
     @SerializedName("OrderId")
     private int orderId;
 
-    @JsonRequired
     @SerializedName("TotalCost")
     private double totalCost;
 

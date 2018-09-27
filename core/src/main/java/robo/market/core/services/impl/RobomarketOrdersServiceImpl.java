@@ -42,17 +42,14 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     private RobomarketOrder getRobomarketOrderByInvoiceId(String invoiceId) {
         // TODO see java 8 lamdas
         RobomarketOrder robomarketOrder = null;
-       /* robomarketOrderList.forEach(order -> {
-            if (order.getInvoiceId().equals(invoiceId)) {
-                robomarketOrder = order;
-            }
-        });*/
         for (RobomarketOrder order : robomarketOrderList) {
             if (order.getInvoiceId().equals(invoiceId)) {
                 robomarketOrder = order;
                 break;
             }
         }
+        /*Optional<RobomarketOrder> order = robomarketOrderList.stream().filter(o -> o.getInvoiceId().equals(invoiceId)).findAny();
+        order.orElse(null);*/
         return robomarketOrder;
     }
 
@@ -110,17 +107,20 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         Date minPaymentDue = getMinPaymentDueByInvoiceId(invoiceId);
         Date nowDate = new Date();
         if (Objects.nonNull(minPaymentDue) && nowDate.after(minPaymentDue)) {
+            RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
+            robomarketOrder.setStatus(RobomarketOrderStatus.RESERVED);
+            robomarketOrder.setMinPaymentDue(newMinPaymentDue);
+        } else {
             throw new ReservationRequestException("There is no such order in the overdue state");
         }
-        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
-        robomarketOrder.setStatus(RobomarketOrderStatus.RESERVED);
-        robomarketOrder.setMinPaymentDue(newMinPaymentDue);
     }
 
     @Override
     public void registerPurchaseRobomarketOrder(PurchaseRequest purchaseRequest) throws PurchaseRequestException {
         String invoiceId = purchaseRequest.getInvoiceId();
+        //TODO почему дата? здесь надо обработать заказ
         Date minPaymentDue = getMinPaymentDueByInvoiceId(invoiceId);
+        //TODO checkRobomarketOrderStatus to isRobomarketOrderReserved
         if (Objects.isNull(minPaymentDue) || (checkRobomarketOrderStatus(invoiceId) != RobomarketOrderStatus.RESERVED)) {
             throw new PurchaseRequestException("This order is not reserved.");
         }

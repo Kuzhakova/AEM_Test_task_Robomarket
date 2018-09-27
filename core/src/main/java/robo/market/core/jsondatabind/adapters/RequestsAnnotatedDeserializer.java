@@ -23,10 +23,9 @@ public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
         Field[] fields = pojo.getClass().getDeclaredFields();
         checkRequaredAnnotation(pojo, fields);
         if (pojo instanceof RobomarketRequest) {
-            Field[] fieldsSuperClass = pojo.getClass().getSuperclass().getDeclaredFields();
-            checkRequaredAnnotation(pojo, fieldsSuperClass);
+            checkRequaredAnnotation(pojo, RobomarketRequest.class.getDeclaredFields());
         }
-        //checkSuperClasses(pojo);
+        //checkSuperClasses(pojo, pojo.getClass().getSuperclass().getDeclaredFields());
         return pojo;
     }
 
@@ -50,7 +49,7 @@ public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
                 try {
                     field.setAccessible(true);
                     Object fieldObject = field.get(pojo);
-                    if (fieldObject == null) {
+                    if (Objects.isNull(fieldObject)) {
                         throw new JsonParseException("Missing field in JSON: " + field.getName());
                     } else {
                         checkRequaredAnnotation(fieldObject, fieldObject.getClass().getDeclaredFields());

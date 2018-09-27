@@ -56,18 +56,16 @@ public class SendMailServiceImpl implements SendMailService {
 
     private String getPathToTemplate() {
         String path = DEFAULT_TEMPLATE_LETTER_PATH;
-        Resource responsivegrid;
         try {
-            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.getServletCallPath() + "/root/responsivegrid");
+            Resource responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.getServletCallPath() + "/root/responsivegrid");
+            if (Objects.nonNull(responsivegrid)) {
+                ValueMap responsivegridValueMap = responsivegrid.getValueMap();
+                path = (String) responsivegridValueMap.get("letterTemplatePath");
+            }
+            return path;
         } catch (LoginException e) {
             return path;
         }
-        if (Objects.nonNull(responsivegrid)) {
-            ValueMap responsivegridValueMap = responsivegrid.getValueMap();
-            path = (String) responsivegridValueMap.get("letterTemplatePath");
-        }
-
-        return path;
     }
 
     @Override
@@ -75,8 +73,7 @@ public class SendMailServiceImpl implements SendMailService {
         try {
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(USER_NAME));
-            message.setRecipients(Message.RecipientType.TO,
-                    InternetAddress.parse(customerEmail));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(customerEmail));
 
             String specialSymbolSubject = "subject::";
             String specialSymbolBody = "body::";
@@ -102,14 +99,29 @@ public class SendMailServiceImpl implements SendMailService {
                     Transport.send(message);
                 }
             }
-        } catch (LoginException | MessagingException e) {
+        } catch (LoginException e) {
+            logger.error("Can not resolve template from path");
+        } catch (MessagingException e) {
             logger.error("Error with sending message");
         }
     }
 
     @Override
-    public void sendFailEmailToCustomer(String customerEmail) throws LoginException, MessagingException {
+    public void sendFailEmailToCustomer(String customerEmail) {
+        try {
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(USER_NAME));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(customerEmail));
+            String subject = "Failure to purchase";
+            String body = "We are sorry, but there was an error buying the product :(";
 
+            message.setHeader("Content-Type", "text/plain; charset=UTF-8");
+            message.setSubject(subject, "UTF-8");
+            message.setText(body, "UTF-8");
+            Transport.send(message);
+        } catch (MessagingException e) {
+            logger.error("Error with sending message");
+        }
     }
 
     private String readStringFromTemplate(InputStream inputStream) {

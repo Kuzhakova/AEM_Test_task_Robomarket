@@ -38,6 +38,9 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
 
     private static final String SECRET_PHRASE = "PokaChtoNetu";
     private static final String HEADER_ROBOSIGNATURE = "RoboSignature";
+
+    //TODO проверить, что эта штука действительно логгирует
+    // project-robomarket-product.log
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Reference
@@ -49,7 +52,7 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
         return servletCallPath;
     }
 
-    private String readRequestBody(SlingHttpServletRequest request) {
+ /*   private String readRequestBody(SlingHttpServletRequest request) {
         StringBuilder requestData = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(request.getReader())) {
             String line = reader.readLine();
@@ -59,63 +62,69 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
             }
             return requestData.toString();
         } catch (IOException e) {
+            //TODO не ловить это исключение. Код не должен продолжать работать, если метод не может считать тело
             return "";
         }
-    }
+    }*/
 
     @Override
     protected void doPost(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
         servletCallPath = request.getResource().getPath();
 
-        String contentType = request.getHeader("Content-Type");
-        String requestString = readRequestBody(request);
+        BufferedReader reader = new BufferedReader(request.getReader());
+        StringBuilder requestData = new StringBuilder();
+        String line = reader.readLine();
+        while (Objects.nonNull(line)) {
+            requestData.append(line);
+            line = reader.readLine();
+        }
+        String requestString = requestData.toString();
+
         String requestSignature = request.getHeader(HEADER_ROBOSIGNATURE);
         String calculatedRequestSignature = DigestUtils.md5Hex(requestString + SECRET_PHRASE);
-        /*if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;
-        }*/
+        }
+
         String responseString = "";
-        if (Objects.nonNull(contentType) && contentType.toLowerCase().contains("application/json")) {
-            try {
-                JSONObject jsonObject = new JSONObject(requestString);
-                JSONObject jsonRobomarket = jsonObject.getJSONObject(RobomarketJsonKeys.ROBOMARKET);
-                Iterator<String> requestTypesIterator = jsonRobomarket.keys();
-                String requestTypeName = requestTypesIterator.next();
-                JSONObject jsonRequestBody = jsonRobomarket.getJSONObject(requestTypeName);
+        try {
+            JSONObject jsonObject = new JSONObject(requestString);
+            JSONObject jsonRobomarket = jsonObject.getJSONObject(RobomarketJsonKeys.ROBOMARKET);
+            Iterator<String> requestTypesIterator = jsonRobomarket.keys();
+            String requestTypeName = requestTypesIterator.next();
+            JSONObject jsonRequestBody = jsonRobomarket.getJSONObject(requestTypeName);
 
-                switch (requestTypeName) {
-                    case RobomarketJsonKeys.RESERVATION_REQUEST:
-                        responseString = robomarketHandleClaimService.handleReservationRequest(jsonRequestBody);
-                        break;
-                    case RobomarketJsonKeys.YA_RESERVATION_REQUEST:
-                        responseString = robomarketHandleClaimService.handleYaReservationRequest(jsonRequestBody);
-                        break;
-                    case RobomarketJsonKeys.CANCELLATION_REQUEST:
-                        responseString = robomarketHandleClaimService.handleCancellationRequest(jsonRequestBody);
-                        break;
-                    case RobomarketJsonKeys.PURCHASE_REQUEST:
-                        responseString = robomarketHandleClaimService.handlePurchaseRequest(jsonRequestBody);
-                        break;
-                    default:
-                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                        return;
-                }
-
-                String calculatedResponseSignature = DigestUtils.md5Hex(responseString + SECRET_PHRASE);
-                PrintWriter printWriter = response.getWriter();
-                printWriter.print(responseString);
-                response.addHeader(HEADER_ROBOSIGNATURE, calculatedResponseSignature);
-                response.setStatus(HttpServletResponse.SC_OK);
-            } catch (JSONException | JsonParseException e) {
-                logger.error("Error occurred during JSON processing.", e);
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            } catch (PurchaseRequestException | CancellationRequestException e) {
-                logger.error("Error occurred during processing request: " + e.getMessage(), e);
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            switch (requestTypeName) {
+                case RobomarketJsonKeys.RESERVATION_REQUEST:
+                    responseString = robomarketHandleClaimService.handleReservationRequest(jsonRequestBody);
+                    break;
+                case RobomarketJsonKeys.YA_RESERVATION_REQUEST:
+                    responseString = robomarketHandleClaimService.handleYaReservationRequest(jsonRequestBody);
+                    break;
+                case RobomarketJsonKeys.CANCELLATION_REQUEST:
+                    responseString = robomarketHandleClaimService.handleCancellationRequest(jsonRequestBody);
+                    break;
+                case RobomarketJsonKeys.PURCHASE_REQUEST:
+                    responseString = robomarketHandleClaimService.handlePurchaseRequest(jsonRequestBody);
+                    break;
+                default:
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                    return;
             }
-        } else {
+
+            String calculatedResponseSignature = DigestUtils.md5Hex(responseString + SECRET_PHRASE);
+            PrintWriter printWriter = response.getWriter();
+            printWriter.print(responseString);
+            response.addHeader(HEADER_ROBOSIGNATURE, calculatedResponseSignature);
+            response.setStatus(HttpServletResponse.SC_OK);
+        } catch (JSONException | JsonParseException e) {
+            logger.error("Error occurred during JSON processing.", e);
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        } catch (PurchaseRequestException | CancellationRequestException e) {
+            logger.error("Error occurred during processing request: " + e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
+
     }
 }

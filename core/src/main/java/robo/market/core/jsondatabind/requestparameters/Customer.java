@@ -13,7 +13,6 @@ public class Customer {
     @SerializedName("Email")
     private String email;
 
-    @JsonRequired
     @SerializedName("Phone")
     private String phone;
 
