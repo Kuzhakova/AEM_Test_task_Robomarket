@@ -70,11 +70,10 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
         String requestString = readRequestBody(request);
         String requestSignature = request.getHeader(HEADER_ROBOSIGNATURE);
         String calculatedRequestSignature = DigestUtils.md5Hex(requestString + SECRET_PHRASE);
-     /*   if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
+        if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
-*/
         String responseString = "";
         try {
             JSONObject jsonObject = new JSONObject(requestString);
