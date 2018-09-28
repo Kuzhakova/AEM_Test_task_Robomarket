@@ -20,6 +20,7 @@
                         sling:resourceType="robomarket-product/components/content/productparsys">
                     <productpar
                             jcr:primaryType="nt:unstructured"
+                            letterTemplatePath="/apps/robomarket-product/templates/emails/sample-template-email.txt"
                             sling:resourceType="foundation/components/parsys">
                         <product
                                 jcr:primaryType="nt:unstructured"
@@ -27,7 +28,7 @@
                                 description="Sport Car"
                                 fileReference="/content/dam/myassets/tesla-roadster_side_view.jpg"
                                 offerId="shapka-sinyaya-123"
-                                price="{Double}1.34076E7"
+                                price="{Double}13407600"
                                 title="Tesla Roadster"/>
                     </productpar>
                 </productparsys>

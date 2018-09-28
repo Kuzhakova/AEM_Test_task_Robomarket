@@ -29,7 +29,7 @@ import java.util.*;
         service = RobomarketHandleClaimService.class, immediate = true)
 public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
 
-    private long RESERVATION_TIME = 60000;
+    private long RESERVATION_TIME = 1800000;
 
     private static final String ROBOMARKET_PRODUCT_RESOURCE_TYPE = "robomarket-product/components/content/product";
 
@@ -85,14 +85,14 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     }
 
     private RobomarketProductModel getProductFromPage(Item item) {
-        Resource responsivegrid = null;
+        Resource productparsys = null;
         try {
-            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.SERVLET_PATH + "/root/responsivegrid");
+            productparsys = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.SERVLET_PATH + "/root/responsivegrid/productparsys/productpar");
         } catch (LoginException e) {
             return null;
         }
-        if (Objects.nonNull(responsivegrid)) {
-            Iterator<Resource> resourceIterator = responsivegrid.listChildren();
+        if (Objects.nonNull(productparsys)) {
+            Iterator<Resource> resourceIterator = productparsys.listChildren();
             while (resourceIterator.hasNext()) {
                 Resource resource = resourceIterator.next();
                 if (resource.isResourceType(ROBOMARKET_PRODUCT_RESOURCE_TYPE)) {
@@ -152,7 +152,7 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
 
     }
 
-    private Map<String, String> createTemplateValuesMap(PurchaseRequest purchaseRequest) {
+    private Map<String, String> createTemplateValuesMap(PurchaseRequest purchaseRequest) throws NoSuchOrderException {
         Map<String, String> templateValuesMap = new HashMap<>();
         for (Item item : purchaseRequest.getItems()) {
             templateValuesMap.put("%product_name%", item.getItemTitle().getValue());

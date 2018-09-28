@@ -36,23 +36,27 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         robomarketOrderList.add(robomarketOrder);
     }
 
-    private RobomarketOrder getRobomarketOrderByInvoiceId(String invoiceId) {
+    private RobomarketOrder getRobomarketOrderByInvoiceId(String invoiceId) throws NoSuchOrderException {
         Optional<RobomarketOrder> order = robomarketOrderList.stream()
                 .filter(o -> o.getInvoiceId().equals(invoiceId))
                 .findAny();
-        return order.orElse(null);
+        RobomarketOrder robomarketOrder = order.orElse(null);
+        if (Objects.isNull(robomarketOrder)) {
+            throw new NoSuchOrderException("There is no such order in database");
+        }
+        return robomarketOrder;
     }
 
     @Override
-    public String getConfirmationLinkParameterByInvoiceId(String invoiceId) {
+    public String getConfirmationLinkParameterByInvoiceId(String invoiceId) throws NoSuchOrderException {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getConfirmationLinkParameter();
     }
 
     @Override
-    public Date getMinPaymentDueByInvoiceId(String invoiceId) {
+    public Date getMinPaymentDueByInvoiceId(String invoiceId) throws NoSuchOrderException {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
-        return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getMinPaymentDue();
+        return robomarketOrder.getMinPaymentDue();
     }
 
 
@@ -63,9 +67,9 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         }
     }
 
-    private boolean cancelRobomarketOrder(String invoiceId) {
+    private boolean cancelRobomarketOrder(String invoiceId) throws NoSuchOrderException {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
-        if (Objects.nonNull(robomarketOrder) && (robomarketOrder.getStatus() == RobomarketOrderStatus.RESERVED)) {
+        if (robomarketOrder.getStatus() == RobomarketOrderStatus.RESERVED) {
             robomarketOrder.setStatus(RobomarketOrderStatus.CANCELLED);
             return true;
         } else {
@@ -90,7 +94,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         String invoiceId = yaReservationRequest.getInvoiceId();
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         Date nowDate = new Date();
-        if (Objects.nonNull(robomarketOrder) && nowDate.after(robomarketOrder.getMinPaymentDue())) {
+        if (nowDate.after(robomarketOrder.getMinPaymentDue())) {
             robomarketOrder.setStatus(RobomarketOrderStatus.RESERVED);
             robomarketOrder.setMinPaymentDue(newMinPaymentDue);
         } else {
@@ -103,7 +107,7 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         String invoiceId = purchaseRequest.getInvoiceId();
 
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
-        if (Objects.isNull(robomarketOrder) || (robomarketOrder.getStatus() != RobomarketOrderStatus.RESERVED)) {
+        if (robomarketOrder.getStatus() != RobomarketOrderStatus.RESERVED) {
             throw new NoSuchOrderException("This order is not reserved.");
         }
         Date nowDate = new Date();

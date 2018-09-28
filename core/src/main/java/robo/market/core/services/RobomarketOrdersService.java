@@ -21,8 +21,8 @@ public interface RobomarketOrdersService {
 
     void confirmRobomarketOrder(String confirmationLinkParam) throws NoSuchOrderException;
 
-    String getConfirmationLinkParameterByInvoiceId(String invoiceId);
+    String getConfirmationLinkParameterByInvoiceId(String invoiceId) throws NoSuchOrderException;
 
-    Date getMinPaymentDueByInvoiceId(String invoiceId);
+    Date getMinPaymentDueByInvoiceId(String invoiceId) throws NoSuchOrderException;
 
 }

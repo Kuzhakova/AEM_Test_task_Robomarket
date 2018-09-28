@@ -57,12 +57,12 @@ public class SendMailServiceImpl implements SendMailService {
     private String getPathToTemplate() {
         String path = DEFAULT_TEMPLATE_LETTER_PATH;
         try {
-            Resource responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.SERVLET_PATH + "/root/responsivegrid");
-            if (Objects.nonNull(responsivegrid)) {
-                ValueMap responsivegridValueMap = responsivegrid.getValueMap();
-                path = (String) responsivegridValueMap.get("letterTemplatePath");
+            Resource productparsys = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.SERVLET_PATH + "/root/responsivegrid/productparsys/productpar");
+            if (Objects.nonNull(productparsys)) {
+                ValueMap productparsysValueMap = productparsys.getValueMap();
+                path = (String) productparsysValueMap.get("letterTemplatePath");
             }
-            return path;
+            return Objects.nonNull(path) ? path : DEFAULT_TEMPLATE_LETTER_PATH;
         } catch (LoginException e) {
             return path;
         }
