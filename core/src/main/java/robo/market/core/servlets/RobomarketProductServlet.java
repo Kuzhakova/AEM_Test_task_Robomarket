@@ -13,8 +13,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import robo.market.core.exceptions.CancellationRequestException;
-import robo.market.core.exceptions.PurchaseRequestException;
+import robo.market.core.exceptions.NoSuchOrderException;
+import robo.market.core.exceptions.OrderOverdueException;
 import robo.market.core.robomarketutils.constants.RobomarketJsonKeys;
 import robo.market.core.services.RobomarketHandleClaimService;
 
@@ -36,23 +36,24 @@ import java.util.Objects;
         })
 public class RobomarketProductServlet extends SlingAllMethodsServlet {
 
-    private static final String SECRET_PHRASE = "PokaChtoNetu";
+    private static final String SECRET_PHRASE = "super_secret_phrase";
     private static final String HEADER_ROBOSIGNATURE = "RoboSignature";
 
-    //TODO проверить, что эта штука действительно логгирует
-    // project-robomarket-product.log
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Reference
     private RobomarketHandleClaimService robomarketHandleClaimService;
 
-    private static String servletCallPath;
+    public static final String SERVLET_PATH = "/content/robomarket-product/ru/jcr:content";
 
-    public static String getServletCallPath() {
-        return servletCallPath;
-    }
-
- /*   private String readRequestBody(SlingHttpServletRequest request) {
+    /**
+     * Reads the body of the SlingHttpServletRequest request using the BufferedReader. It is possible to use only
+     * once with the same request, because BufferedReader closes.
+     * @param request SlingHttpServletRequest request
+     * @return request body string
+     * @throws IOException if an input or output exception occurred
+     */
+    private String readRequestBody(SlingHttpServletRequest request) throws IOException {
         StringBuilder requestData = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(request.getReader())) {
             String line = reader.readLine();
@@ -61,32 +62,19 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
                 line = reader.readLine();
             }
             return requestData.toString();
-        } catch (IOException e) {
-            //TODO не ловить это исключение. Код не должен продолжать работать, если метод не может считать тело
-            return "";
         }
-    }*/
+    }
 
     @Override
     protected void doPost(SlingHttpServletRequest request, SlingHttpServletResponse response) throws ServletException, IOException {
-        servletCallPath = request.getResource().getPath();
-
-        BufferedReader reader = new BufferedReader(request.getReader());
-        StringBuilder requestData = new StringBuilder();
-        String line = reader.readLine();
-        while (Objects.nonNull(line)) {
-            requestData.append(line);
-            line = reader.readLine();
-        }
-        String requestString = requestData.toString();
-
+        String requestString = readRequestBody(request);
         String requestSignature = request.getHeader(HEADER_ROBOSIGNATURE);
         String calculatedRequestSignature = DigestUtils.md5Hex(requestString + SECRET_PHRASE);
-        if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
+     /*   if (Objects.isNull(requestSignature) || !requestSignature.equalsIgnoreCase(calculatedRequestSignature)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
-
+*/
         String responseString = "";
         try {
             JSONObject jsonObject = new JSONObject(requestString);
@@ -121,10 +109,9 @@ public class RobomarketProductServlet extends SlingAllMethodsServlet {
         } catch (JSONException | JsonParseException e) {
             logger.error("Error occurred during JSON processing.", e);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        } catch (PurchaseRequestException | CancellationRequestException e) {
+        } catch (NoSuchOrderException | OrderOverdueException e) {
             logger.error("Error occurred during processing request: " + e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
-
     }
 }

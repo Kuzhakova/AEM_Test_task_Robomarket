@@ -1,9 +1,6 @@
 package robo.market.core.services;
 
-import robo.market.core.exceptions.CancellationRequestException;
-import robo.market.core.exceptions.ConfirmationException;
-import robo.market.core.exceptions.PurchaseRequestException;
-import robo.market.core.exceptions.ReservationRequestException;
+import robo.market.core.exceptions.*;
 import robo.market.core.jsondatabind.cancellation.CancellationRequest;
 import robo.market.core.jsondatabind.purchase.PurchaseRequest;
 import robo.market.core.jsondatabind.reservation.ReservationRequest;
@@ -16,14 +13,16 @@ public interface RobomarketOrdersService {
 
     void reserveRobomarketOrder(ReservationRequest reservationRequest, ReservationSuccess reservationSuccess);
 
-    void registerPurchaseRobomarketOrder(PurchaseRequest purchaseRequest) throws PurchaseRequestException;
+    void registerPurchaseRobomarketOrder(PurchaseRequest purchaseRequest) throws NoSuchOrderException, OrderOverdueException;
 
-    void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, Date newMinPaymentDue) throws ReservationRequestException;
+    void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, Date newMinPaymentDue) throws NoSuchOrderException;
 
-    void cancelRobomarketOrder(CancellationRequest cancellationRequest) throws CancellationRequestException;
+    void cancelRobomarketOrder(CancellationRequest cancellationRequest) throws NoSuchOrderException;
 
-    boolean confirmRobomarketOrder(String confirmationLinkParam) throws ConfirmationException;
+    void confirmRobomarketOrder(String confirmationLinkParam) throws NoSuchOrderException;
 
     String getConfirmationLinkParameterByInvoiceId(String invoiceId);
+
+    Date getMinPaymentDueByInvoiceId(String invoiceId);
 
 }

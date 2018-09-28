@@ -8,26 +8,18 @@ import org.json.JSONObject;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import robo.market.core.exceptions.CancellationRequestException;
-import robo.market.core.exceptions.PurchaseRequestException;
-import robo.market.core.exceptions.ReservationRequestException;
+import robo.market.core.exceptions.*;
 import robo.market.core.jsondatabind.adapters.RequestsAnnotatedDeserializer;
-import robo.market.core.jsondatabind.cancellation.CancellationRequest;
-import robo.market.core.jsondatabind.cancellation.CancellationResponse;
-import robo.market.core.jsondatabind.purchase.PurchaseRequest;
-import robo.market.core.jsondatabind.purchase.PurchaseResponce;
+import robo.market.core.jsondatabind.cancellation.*;
+import robo.market.core.jsondatabind.purchase.*;
 import robo.market.core.jsondatabind.requestparameters.Customer;
 import robo.market.core.jsondatabind.responseparameters.ErrorJson;
 import robo.market.core.jsondatabind.requestparameters.Item;
-import robo.market.core.jsondatabind.reservation.ReservationFailure;
-import robo.market.core.jsondatabind.reservation.ReservationRequest;
-import robo.market.core.jsondatabind.reservation.ReservationSuccess;
+import robo.market.core.jsondatabind.reservation.*;
 import robo.market.core.jsondatabind.yareservation.YaReservationRequest;
 import robo.market.core.models.RobomarketProductModel;
 import robo.market.core.robomarketutils.constants.RobomarketJsonKeys;
-import robo.market.core.services.RobomarketHandleClaimService;
-import robo.market.core.services.RobomarketOrdersService;
-import robo.market.core.services.SendMailService;
+import robo.market.core.services.*;
 import robo.market.core.servlets.EmailConfirmationServlet;
 import robo.market.core.servlets.RobomarketProductServlet;
 
@@ -37,7 +29,9 @@ import java.util.*;
         service = RobomarketHandleClaimService.class, immediate = true)
 public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
 
-    public static final String ROBOMARKET_PRODUCT_RESOURCE_TYPE = "robomarket-product/components/content/product";
+    private long RESERVATION_TIME = 60000;
+
+    private static final String ROBOMARKET_PRODUCT_RESOURCE_TYPE = "robomarket-product/components/content/product";
 
     @Reference
     private ResourceResolverFactory resolverFactory;
@@ -60,9 +54,6 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     @Override
     public String handleReservationRequest(JSONObject requestData) throws JsonParseException {
         ReservationRequest reservationRequest = gson.fromJson(requestData.toString(), ReservationRequest.class);
-        if (Objects.isNull(reservationRequest)) {
-            throw new JsonParseException("Error parsing JSON request string");
-        }
         JsonObject jsonResponce = new JsonObject();
         JsonObject jsonStatus = new JsonObject();
         JsonElement jsonResponseFields;
@@ -96,7 +87,7 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     private RobomarketProductModel getProductFromPage(Item item) {
         Resource responsivegrid = null;
         try {
-            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.getServletCallPath() + "/root/responsivegrid");
+            responsivegrid = resolverFactory.getResourceResolver(null).getResource(RobomarketProductServlet.SERVLET_PATH + "/root/responsivegrid");
         } catch (LoginException e) {
             return null;
         }
@@ -118,20 +109,18 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     @Override
     public String handleYaReservationRequest(JSONObject requestData) throws JsonParseException {
         YaReservationRequest yaReservationRequest = gson.fromJson(requestData.toString(), YaReservationRequest.class);
-        if (Objects.isNull(yaReservationRequest)) {
-            throw new JsonParseException("Error parsing JSON request string");
-        }
         JsonObject jsonResponce = new JsonObject();
         JsonObject jsonStatus = new JsonObject();
         JsonElement jsonResponseFields;
         try {
-            Date paymentDue = new Date(RESERVATION_TIME + System.currentTimeMillis());
+            Date paymentDueOrder = robomarketOrdersService.getMinPaymentDueByInvoiceId(yaReservationRequest.getInvoiceId());
+            Date paymentDue = new Date(RESERVATION_TIME + paymentDueOrder.getTime());
             ReservationSuccess reservationSuccess = new ReservationSuccess(yaReservationRequest.getOrderId(), yaReservationRequest.getInvoiceId(), paymentDue);
             robomarketOrdersService.yaReserveRobomarketOrder(yaReservationRequest, paymentDue);
             jsonResponseFields = gson.toJsonTree(reservationSuccess);
             jsonStatus.add(RobomarketJsonKeys.RESERVATION_SUCCESS, jsonResponseFields);
 
-        } catch (ReservationRequestException e) {
+        } catch (NoSuchOrderException e) {
             ReservationFailure reservationFailure = new ReservationFailure(yaReservationRequest.getOrderId(), ErrorJson.ERROR_CODE_FAIL);
             jsonResponseFields = gson.toJsonTree(reservationFailure);
             jsonStatus.add(RobomarketJsonKeys.RESERVATION_FAILURE, jsonResponseFields);
@@ -141,11 +130,8 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     }
 
     @Override
-    public String handlePurchaseRequest(JSONObject requestData) throws JsonParseException, PurchaseRequestException {
+    public String handlePurchaseRequest(JSONObject requestData) throws JsonParseException, OrderOverdueException, NoSuchOrderException {
         PurchaseRequest purchaseRequest = gson.fromJson(requestData.toString(), PurchaseRequest.class);
-        if (Objects.isNull(purchaseRequest)) {
-            throw new JsonParseException("Error parsing JSON request string");
-        }
         robomarketOrdersService.registerPurchaseRobomarketOrder(purchaseRequest);
 
         JsonObject jsonResponce = new JsonObject();
@@ -184,11 +170,8 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
     }
 
     @Override
-    public String handleCancellationRequest(JSONObject requestData) throws JsonParseException, CancellationRequestException {
+    public String handleCancellationRequest(JSONObject requestData) throws JsonParseException, NoSuchOrderException {
         CancellationRequest cancellationRequest = gson.fromJson(requestData.toString(), CancellationRequest.class);
-        if (Objects.isNull(cancellationRequest)) {
-            throw new JsonParseException("Error parsing JSON request string");
-        }
         robomarketOrdersService.cancelRobomarketOrder(cancellationRequest);
         JsonObject jsonResponce = new JsonObject();
         JsonObject jsonStatus = new JsonObject();
@@ -202,5 +185,4 @@ public class RobomarketHandleClaimImpl implements RobomarketHandleClaimService {
 
         return gson.toJson(jsonResponce);
     }
-
 }

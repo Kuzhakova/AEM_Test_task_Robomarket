@@ -4,7 +4,7 @@
     <div class="card" style="width:500px">
         <img class="card-img-top" src="${properties.fileReference}" alt="Preview image">
         <div class="card-body">
-            <h1 class="card-title pricing-card-title"><fmt:formatNumber value="${product.price}" type="currency" currencySymbol=""/> RUB</h1>
+            <h3 class="card-title pricing-card-title"><fmt:formatNumber value="${product.price}" type="currency" currencySymbol=""/> RUB</h3>
             <h4 class="card-title">${product.title}</h4>
             <p class="card-text">${product.description}</p>
             <a class="btn btn-success btn-block" data-sc-offerid="${product.offerId}"
@@ -12,3 +12,9 @@
         </div>
     </div>
 </c:if>
+
+<script>
+    $(document).ready(function() {
+        purchaseModal.onLoad();
+    })
+</script>

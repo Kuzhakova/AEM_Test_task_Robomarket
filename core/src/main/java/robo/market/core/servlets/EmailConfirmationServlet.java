@@ -7,7 +7,7 @@ import org.apache.sling.api.servlets.SlingAllMethodsServlet;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import robo.market.core.exceptions.ConfirmationException;
+import robo.market.core.exceptions.NoSuchOrderException;
 import robo.market.core.services.RobomarketOrdersService;
 
 import javax.servlet.Servlet;
@@ -33,10 +33,9 @@ public class EmailConfirmationServlet extends SlingAllMethodsServlet {
         String parameter = request.getParameter("u");
         String url = "/content/robomarket-product/ru.html";
         try {
-            if (robomarketOrdersService.confirmRobomarketOrder(parameter)) {
-                url += "?u=success";
-            }
-        } catch (ConfirmationException e) {
+            robomarketOrdersService.confirmRobomarketOrder(parameter);
+            url += "?u=success";
+        } catch (NoSuchOrderException e) {
             url += "?u=failure";
         } finally {
             response.sendRedirect(url);

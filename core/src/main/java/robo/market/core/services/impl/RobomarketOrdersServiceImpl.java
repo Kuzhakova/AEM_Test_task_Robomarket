@@ -2,10 +2,7 @@ package robo.market.core.services.impl;
 
 import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Component;
-import robo.market.core.exceptions.CancellationRequestException;
-import robo.market.core.exceptions.ConfirmationException;
-import robo.market.core.exceptions.PurchaseRequestException;
-import robo.market.core.exceptions.ReservationRequestException;
+import robo.market.core.exceptions.*;
 import robo.market.core.jsondatabind.cancellation.CancellationRequest;
 import robo.market.core.jsondatabind.purchase.PurchaseRequest;
 import robo.market.core.jsondatabind.reservation.ReservationRequest;
@@ -40,22 +37,10 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     }
 
     private RobomarketOrder getRobomarketOrderByInvoiceId(String invoiceId) {
-        // TODO see java 8 lamdas
-        RobomarketOrder robomarketOrder = null;
-        for (RobomarketOrder order : robomarketOrderList) {
-            if (order.getInvoiceId().equals(invoiceId)) {
-                robomarketOrder = order;
-                break;
-            }
-        }
-        /*Optional<RobomarketOrder> order = robomarketOrderList.stream().filter(o -> o.getInvoiceId().equals(invoiceId)).findAny();
-        order.orElse(null);*/
-        return robomarketOrder;
-    }
-
-    private Date getMinPaymentDueByInvoiceId(String invoiceId) {
-        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
-        return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getMinPaymentDue();
+        Optional<RobomarketOrder> order = robomarketOrderList.stream()
+                .filter(o -> o.getInvoiceId().equals(invoiceId))
+                .findAny();
+        return order.orElse(null);
     }
 
     @Override
@@ -64,15 +49,17 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
         return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getConfirmationLinkParameter();
     }
 
-    private RobomarketOrderStatus checkRobomarketOrderStatus(String invoiceId) {
+    @Override
+    public Date getMinPaymentDueByInvoiceId(String invoiceId) {
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
-        return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getStatus();
+        return Objects.isNull(robomarketOrder) ? null : robomarketOrder.getMinPaymentDue();
     }
 
+
     @Override
-    public void cancelRobomarketOrder(CancellationRequest cancellationRequest) throws CancellationRequestException {
+    public void cancelRobomarketOrder(CancellationRequest cancellationRequest) throws NoSuchOrderException {
         if (!cancelRobomarketOrder(cancellationRequest.getInvoiceId())) {
-            throw new CancellationRequestException("There is no such order in the reserved state");
+            throw new NoSuchOrderException("There is no such order in the reserved state");
         }
     }
 
@@ -87,50 +74,43 @@ public class RobomarketOrdersServiceImpl implements RobomarketOrdersService {
     }
 
     @Override
-    public boolean confirmRobomarketOrder(String confirmationLinkParam) throws ConfirmationException {
-        try {
-            for (RobomarketOrder order : robomarketOrderList) {
-                if (order.getConfirmationLinkParameter().equals(confirmationLinkParam) && (order.getStatus() != RobomarketOrderStatus.CONFIRMED)) {
-                    order.setStatus(RobomarketOrderStatus.CONFIRMED);
-                    return true;
-                }
-            }
-            return false;
-        } catch (Exception e) {
-            throw new ConfirmationException();
+    public void confirmRobomarketOrder(String confirmationLinkParam) throws NoSuchOrderException {
+        Optional<RobomarketOrder> order = robomarketOrderList.stream()
+                .filter(o -> o.getConfirmationLinkParameter().equals(confirmationLinkParam))
+                .findAny();
+        RobomarketOrder robomarketOrder = order.orElse(null);
+        if (Objects.isNull(robomarketOrder)) {
+            throw new NoSuchOrderException();
         }
+        robomarketOrder.setStatus(RobomarketOrderStatus.CONFIRMED);
     }
 
     @Override
-    public void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, Date newMinPaymentDue) throws ReservationRequestException {
+    public void yaReserveRobomarketOrder(YaReservationRequest yaReservationRequest, Date newMinPaymentDue) throws NoSuchOrderException {
         String invoiceId = yaReservationRequest.getInvoiceId();
-        Date minPaymentDue = getMinPaymentDueByInvoiceId(invoiceId);
+        RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
         Date nowDate = new Date();
-        if (Objects.nonNull(minPaymentDue) && nowDate.after(minPaymentDue)) {
-            RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
+        if (Objects.nonNull(robomarketOrder) && nowDate.after(robomarketOrder.getMinPaymentDue())) {
             robomarketOrder.setStatus(RobomarketOrderStatus.RESERVED);
             robomarketOrder.setMinPaymentDue(newMinPaymentDue);
         } else {
-            throw new ReservationRequestException("There is no such order in the overdue state");
+            throw new NoSuchOrderException("There is no such order in the overdue state");
         }
     }
 
     @Override
-    public void registerPurchaseRobomarketOrder(PurchaseRequest purchaseRequest) throws PurchaseRequestException {
+    public void registerPurchaseRobomarketOrder(PurchaseRequest purchaseRequest) throws NoSuchOrderException, OrderOverdueException {
         String invoiceId = purchaseRequest.getInvoiceId();
-        //TODO почему дата? здесь надо обработать заказ
-        Date minPaymentDue = getMinPaymentDueByInvoiceId(invoiceId);
-        //TODO checkRobomarketOrderStatus to isRobomarketOrderReserved
-        if (Objects.isNull(minPaymentDue) || (checkRobomarketOrderStatus(invoiceId) != RobomarketOrderStatus.RESERVED)) {
-            throw new PurchaseRequestException("This order is not reserved.");
-        }
-        Date nowDate = new Date();
-        if (nowDate.after(minPaymentDue)) {
-            cancelRobomarketOrder(invoiceId);
-            throw new PurchaseRequestException("Product payment overdue.");
-        }
 
         RobomarketOrder robomarketOrder = getRobomarketOrderByInvoiceId(invoiceId);
+        if (Objects.isNull(robomarketOrder) || (robomarketOrder.getStatus() != RobomarketOrderStatus.RESERVED)) {
+            throw new NoSuchOrderException("This order is not reserved.");
+        }
+        Date nowDate = new Date();
+        if (nowDate.after(robomarketOrder.getMinPaymentDue())) {
+            cancelRobomarketOrder(invoiceId);
+            throw new OrderOverdueException("Product payment overdue.");
+        }
         robomarketOrder.setStatus(RobomarketOrderStatus.PURCHASED);
     }
 }

@@ -22,10 +22,10 @@ public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
 
         Field[] fields = pojo.getClass().getDeclaredFields();
         checkRequaredAnnotation(pojo, fields);
+        //Checks all request except CancellationRequest
         if (pojo instanceof RobomarketRequest) {
             checkRequaredAnnotation(pojo, RobomarketRequest.class.getDeclaredFields());
         }
-        //checkSuperClasses(pojo, pojo.getClass().getSuperclass().getDeclaredFields());
         return pojo;
     }
 
@@ -37,6 +37,7 @@ public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
     }
 
     private void checkRequaredAnnotation(Object pojo, Field[] fields) throws JsonParseException {
+        // Checking nested list items
         if (pojo instanceof List) {
             final List pojoList = (List) pojo;
             for (final Object pojoListPojo : pojoList) {
@@ -45,16 +46,20 @@ public class RequestsAnnotatedDeserializer<T> implements JsonDeserializer<T> {
             }
         }
         for (Field field : fields) {
+            // If some field has required annotation
             if (Objects.nonNull(field.getAnnotation(JsonRequired.class))) {
                 try {
+                    // Trying to read this field's value and check that it truly has value
                     field.setAccessible(true);
                     Object fieldObject = field.get(pojo);
                     if (Objects.isNull(fieldObject)) {
+                        // Required value is null - throwing exception
                         throw new JsonParseException("Missing field in JSON: " + field.getName());
                     } else {
                         checkRequaredAnnotation(fieldObject, fieldObject.getClass().getDeclaredFields());
                         checkSuperClasses(fieldObject);
                     }
+                    // Exceptions while reflection
                 } catch (IllegalArgumentException | IllegalAccessException e) {
                     throw new JsonParseException(e);
                 }

@@ -2,18 +2,16 @@ package robo.market.core.services;
 
 import com.google.gson.JsonParseException;
 import org.json.JSONObject;
-import robo.market.core.exceptions.CancellationRequestException;
-import robo.market.core.exceptions.PurchaseRequestException;
+import robo.market.core.exceptions.NoSuchOrderException;
+import robo.market.core.exceptions.OrderOverdueException;
 
 public interface RobomarketHandleClaimService {
-
-    long RESERVATION_TIME = 60000;
 
     String handleReservationRequest(JSONObject requestData) throws JsonParseException;
 
     String handleYaReservationRequest(JSONObject requestData) throws JsonParseException;
 
-    String handlePurchaseRequest(JSONObject requestData) throws JsonParseException, PurchaseRequestException;
+    String handlePurchaseRequest(JSONObject requestData) throws JsonParseException, OrderOverdueException, NoSuchOrderException;
 
-    String handleCancellationRequest(JSONObject requestData) throws JsonParseException, CancellationRequestException;
+    String handleCancellationRequest(JSONObject requestData) throws JsonParseException, NoSuchOrderException;
 }
